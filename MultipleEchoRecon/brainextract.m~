@@ -1,0 +1,92 @@
+function [msk] = brainextract(mag)
+
+
+if size(mag,4) > 1
+    
+    
+end
+
+% Calculate combined images
+mag.odd = mean(img(:,:,:,1:2:echoes),4);
+mag.evn = ficME(mag.all(:,:,:,2:2:end));
+mag.tst = make_nii(mag.odd,vox,[0 0 0],16);
+save_nii(mag.tst,'mag.tst.nii');
+
+if num_pfile == 1
+    mag.evn = zeros(size(mag.odd));
+end
+
+% Calculate skull-stripping mask for odd echoes
+if (brainextract == 1 || brainextract == 2)
+    ref_nii = 'msk.odd.nii';
+    if exist(ref_nii,'file') == 2
+        msk.odd = load_nii(ref_nii);
+        msk.odd = double(msk.odd.img);
+    else
+        fprintf('   Generating mask for odd echoes...\n');
+        nii = make_nii(mag.odd,vox,[0 0 0],16);
+        save_nii(nii,ref_nii);
+        msk.odd = stripMask(ref_nii,1);
+    end
+    mag.odd = msk.odd.*mag.odd;
+    mag.odd = make_nii(mag.odd,vox,[0 0 0],16);
+    save_nii(mag.odd,'mag.odd.nii');
+
+    % Calculate skull-stripping mask for even echoes
+    ref_nii = 'msk.evn.nii';
+    if exist(ref_nii,'file') == 2
+        msk.evn = load_nii(ref_nii);
+        msk.evn = double(msk.evn.img);
+    else            
+        fprintf('   Generating mask for even echoes...\n');
+        nii = make_nii(mag.evn,vox,[0 0 0],16);
+        save_nii(nii,ref_nii);
+        if brainextract == 2
+            msk.evn = stripMask(ref_nii,1);
+        else
+            msk.evn = circshift(msk.odd,echoshift);
+            nii = make_nii(double(msk.evn),vox,[0 0 0],2);
+            save_nii(nii,'msk.evn.nii');
+        end
+    end
+    mag.evn = msk.evn.*mag.evn;
+    mag.evn = make_nii(mag.evn,vox,[0 0 0],16);
+    save_nii(mag.evn,'mag.evn.nii');
+    
+    figure(1); dock(1); show(mag.odd.img,mag.evn.img);
+    
+    % Coregister .nii files w/help of FSL to get xform matrix
+    if ~exist(xform,'file')
+        w = 5; count = 0;
+        while ~exist(xform,'file')
+            wstr = ['   Script has waited ' num2str(count,4) ...
+                ' seconds for FSL transform matrix, ' xform '.'];
+            fprintf('%s',wstr);
+            pause(w)
+            count = count + w;
+            for k = 1:length(wstr)
+                fprintf('\b');
+            end
+        end
+        fprintf('   FSL transform matrix complete!\n');
+    end 
+else
+    z = ceil(dims(3)/2);
+    figure(1); dock(1); show(mag.odd,mag.evn,z);
+    makeFslXfmMatrix([vox(1)*2 0 0],[0 0 0],[1 1 1],'even2odd.mat');
+    msk.odd = ones(dims(1),dims(2),dims(3));
+%     msk.evn = msk.odd;
+%     msk.all = msk.odd;
+end          
+
+mag = zeros(size(raw));
+phs = mag;
+if ~exist('z','var')
+    z = cslice(msk.odd);
+end
+
+
+
+
+end
+

@@ -1,0 +1,32 @@
+function [ output_args ] = combineME( input_args )
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
+
+swiODD = sum(swi(:,:,:,1:2:echoes),4)/ceil(echoes/2);
+swiEVEN = sum(swi(:,:,:,2:2:echoes),4)/(echoes/2);
+swiALL = (swiODD*ceil(echoes/2)+swiEVEN*(echoes/2))/echoes;
+
+figure(2);
+subplot(141); show(swi(:,:,z,1)); title('1st Echo');
+subplot(142); show(swiODD(:,:,z)); title('Odd Echoes');
+subplot(143); show(swiEVEN(:,:,z)); title('Even Echoes');
+subplot(144); show(swiALL(:,:,z)); title('All Echoes');
+
+fid = fopen('odd.swi','w');
+fwrite(fid,chiODD,'float');
+fclose(fid);
+fprintf('Wrote 32-bit real, %s\n','odd.swi');
+
+fid = fopen('even.swi','w');
+fwrite(fid,chiEVEN,'float');
+fclose(fid);
+fprintf('Wrote 32-bit real, %s\n','even.swi');
+
+fid = fopen('all.swi','w');
+fwrite(fid,chiALL,'float');
+fclose(fid);
+fprintf('Wrote 32-bit real, %s\n','all.swi');
+
+
+end
+

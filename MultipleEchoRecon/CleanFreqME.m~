@@ -1,0 +1,78 @@
+function [phs,msk] = CleanFreqME(mag,frq,thresh_factor,monitor)
+%CleanFreq.m: Cleans up that messy noise in MapFreq images
+%
+% CleanFreq(phase_img,mag_img,matrix_size) if phase_img is string.  If you
+% are lazy and your data is in the form of m x m x m (m^3), don't enter
+% matrix size.  If you are even lazier, and phase_img and mag_img have the
+% same base name, you only have to enter one input.
+%
+% CleanFreq(phase_img,mag_img,'echo#') if phase_img and mag_img are already  
+% variable matrices.  Include 'echo#' as a string if working with a single 
+% echo so that it is properly labeled.
+
+if (ischar(mag) == 1 || ischar(frq) == 1)
+    [mag,frq] = readMEraw('mag','frq');
+end
+
+if ~exist('thresh_factor','var')
+    thresh_factor = 1.5;
+end
+
+if ~exist('monitor','var')
+    monitor = 'n';
+end
+
+% noise_frame = mag(1:size(mag,1),1:ceil(size(mag,2)/64),1:ceil(size(mag,3)/64));
+% noise_mean = mean(noise_frame(:));
+% noise_std = std(noise_frame(:));
+
+% Creates phase image
+% thresh = noise_mean+std_devs*noise_std;    % mean + 6-sigma noise cutoff
+% Required_SNR = thresh/noise_std;    % Calculates required SNR to incl phase
+% disp(['   SNR cutoff used for clean up: ' num2str(Required_SNR)]);
+% mask = mag > thresh;            % Creates threshold max from magnitude data
+% phs = frq.*mask;                % Creates phase image with zero background 
+
+phs = zeros(size(mag));
+msk = phs;
+echoes = size(mag,4);
+back = 0; time = 0;
+for k = 1:echoes
+
+    if strcmp(monitor,'y') ~= 1
+        [back,time] = progress(k,echoes,'Phase for echo',back,time);
+%         [phs(:,:,:,k),msk(:,:,:,k)] = PhaseMask(mag(:,:,:,k),frq(:,:,:,k),thresh_factor);
+        msk = strip_mask_T2w(ref_nii,1,thresh_factor
+    else
+        monitor2 = 'n';         
+        while strcmp(monitor2,'y') ~= 1 
+            fprintf('   Echo: %d/%d\n',k,echoes);
+            [phs(:,:,:,k),msk(:,:,:,k)] = PhaseMask(mag(:,:,:,k),frq(:,:,:,k),thresh_factor);
+            monitor2 = input('   Is the threshold appropriate? (y/n): ','s');
+            if strcmp(monitor2,'y') ~= 1
+                thresh_factor = input('   Choose a new threshold factor: ');
+            else
+                monitor = input('   Would you like to continue to choose the threshold? (y/n): ','s');
+            end
+        end
+    end
+end
+
+% Display
+center_img = ceil(size(mag,3)/2);
+figure(2)
+subplot(231); show(mag,center_img); title('Magnitude'); 
+subplot(232); show(frq,center_img); title('Frequency Map');
+subplot(233); show(phs,center_img); title('Cleaned Phase');
+
+writeME(phs);
+
+if size(phs,4) > 1
+    figure(1)
+    subplot(212); montageME(phs,center_img,'1D'); title('Phase Map');
+%     combineME(phs);
+end
+
+fprintf('   Phase cleaning complete!\n');
+
+end
